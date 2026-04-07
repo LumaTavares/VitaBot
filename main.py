@@ -1,16 +1,17 @@
 import customtkinter as ctk
 import cv2
 from PIL import Image, ImageTk
-from thermalcamera import conectar_serial
+import webcam
+#from thermalcamera import conectar_serial
 
 camera = None
-
+url = "http://172.19.176.32:81/stream"
 #acho que nao precisava passar button como parametro
 def ligar_camera(button):
     global camera 
     if camera is None:
         button.configure(text="Desligar Camera", command=lambda: desligar_camera(button))
-        camera = cv2.VideoCapture(0)
+        camera = cv2.VideoCapture(url)
     atualizar_camera()
 
 def desligar_camera(button):
@@ -21,14 +22,13 @@ def desligar_camera(button):
     camera_label.configure(image=None)
     camera_label.image = None
     button.configure(text="Ligar Camera",command=lambda: ligar_camera(button))
-
-def ligar_camera_termica():
+#def ligar_camera_termica():
 
 def atualizar_camera():
     if camera is not None:
         ret, frame = camera.read()
         if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)#converter a imagem de BGR para RGB porque o OpenCV usa BGR 
+            frame = webcam.process_frame(frame)
             img = Image.fromarray(frame) #converte a imagem para o formato PIL
             img= img.resize((600, 500))
             ctk_img = ctk.CTkImage(light_image=img, size=(600, 500)) #converte a imagem para o formato CTkImage
