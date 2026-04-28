@@ -5,7 +5,7 @@ import webcam
 #from thermalcamera import conectar_serial
 
 camera = None
-url = "http://172.19.176.32:81/stream"
+url = "http://172.19.176.26:81/stream"
 #acho que nao precisava passar button como parametro
 def ligar_camera(button):
     global camera 
