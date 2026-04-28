@@ -46,20 +46,21 @@ def draw_landmarks_on_image(rgb_image, pose_landmarks):
 
 
 
-base_options = python.BaseOptions(model_asset_path='pose_landmarker_heavy.task')
+base_options = python.BaseOptions(model_asset_path='pose_landmarker_lite.task')
 options = vision.PoseLandmarkerOptions(
     base_options=base_options,
     output_segmentation_masks=True)
 detector = vision.PoseLandmarker.create_from_options(options)
 
 def process_frame(frame):
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame[:, :, ::-1])
 
     detection_result = detector.detect(image)
 
-    if detection_result is not None:
-        poseLandmarkList = detection_result.pose_landmarks
-        for idx , landmark in enumerate(poseLandmarkList.landmark):
-            annotated_image = draw_landmarks_on_image(image.numpy_view(), landmark)
-        return annotated_image
-    return frame
+    poseLandmarkList = detection_result.pose_landmarks
+    if poseLandmarkList:
+      for idx , landmark in enumerate(poseLandmarkList):
+        annotated_image = draw_landmarks_on_image(image.numpy_view(), landmark)
+      return cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR)
+    return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
