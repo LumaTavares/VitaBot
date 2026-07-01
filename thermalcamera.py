@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 
 def conectar_serial():
-    porta = "COM7"  # porta serial pode ajustar se precisar
+    porta = "COM4"  # porta serial pode ajustar se precisar
     baud_rate = 115200
 
     try:
