@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 
 def conectar_serial():
-    porta = "COM4"  # porta serial pode ajustar se precisar
+    porta = "COM3"  # porta serial pode ajustar se precisar
     baud_rate = 115200
 
     try:
@@ -56,4 +56,5 @@ def ler_frame(ser):
     # IMPORTANTE: OpenCV usa BGR, mas o Tkinter/Pillow usa RGB. Precisamos converter!
     thermal_rgb = cv2.cvtColor(thermal_bgr, cv2.COLOR_BGR2RGB)
 
-    return thermal_rgb
+    # Retorna a imagem RGB para exibição E a matriz original com as temperaturas reais
+    return thermal_rgb, frame

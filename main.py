@@ -8,12 +8,13 @@ from datetime import datetime
 
 # Variáveis globais da câmera normal
 camera = None
-url = "http://172.19.176.26:81/stream"
+url = "172.19.176.32:81/stream"
 
 # Variáveis globais da câmera térmica
 ser_termica = None
 rodando_termica = False
 ultimo_frame_termico = None
+ultima_matriz_termica = None  # Variável para armazenar as temperaturas brutas (floats)
 
 # Variável de controle do salvamento automático
 auto_salvando = False
@@ -59,29 +60,53 @@ def ligar_camera_termica(button):
             atualizar_camera_termica()
 
 def desligar_camera_termica(button):
-    global ser_termica, rodando_termica
+    global ser_termica, rodando_termica, ultima_matriz_termica
     rodando_termica = False
     if ser_termica is not None:
         ser_termica.close()
         ser_termica = None
     
+    ultima_matriz_termica = None
     camera_termica_label.configure(image=None)
     camera_termica_label.image = None
+    label_temperatura.configure(text="Clique na imagem térmica para medir a temperatura")
     button.configure(text="Visualizar informações térmicas", command=lambda: ligar_camera_termica(button))
 
 def atualizar_camera_termica():
-    global ser_termica, rodando_termica, ultimo_frame_termico
+    global ser_termica, rodando_termica, ultimo_frame_termico, ultima_matriz_termica
     if rodando_termica and ser_termica is not None:
-        frame_termico = thermalcamera.ler_frame(ser_termica)
+        resultado = thermalcamera.ler_frame(ser_termica)
         
-        if frame_termico is not None:
+        if resultado is not None:
+            # Desempacota a imagem RGB e a matriz de floats
+            frame_termico, matriz_termica = resultado
+            
             ultimo_frame_termico = frame_termico
+            ultima_matriz_termica = matriz_termica
+            
             img = Image.fromarray(frame_termico)
             ctk_img = ctk.CTkImage(light_image=img, size=(600, 500))
             camera_termica_label.configure(image=ctk_img)
             camera_termica_label.image = ctk_img
             
         camera_termica_label.after(10, atualizar_camera_termica)
+
+def ao_clicar_termica(event):
+    global ultima_matriz_termica
+    if ultima_matriz_termica is not None and rodando_termica:
+        # Mapeia as coordenadas da tela (600x500) para a resolução real do sensor (32x24)
+        coluna = int((event.x / 600.0) * 32)
+        linha = int((event.y / 500.0) * 24)
+        
+        # Garante que o índice fique dentro dos limites do array Numpy
+        coluna = max(0, min(coluna, 31))
+        linha = max(0, min(linha, 23))
+        
+        # Pega a temperatura exata do ponto clicado
+        temp = ultima_matriz_termica[linha, coluna]
+        
+        # Atualiza a interface gráfica
+        label_temperatura.configure(text=f"Temperatura no ponto: {temp:.1f} °C")
 
 # ================= SALVAMENTO AUTOMÁTICO =================
 def toggle_auto_salvar():
@@ -151,13 +176,23 @@ Frame2.pack()
 camera_termica_label = ctk.CTkLabel(Frame2, text="", width=600, height=500)
 camera_termica_label.pack()
 
+# ---> VÍNCULO DO EVENTO DE CLIQUE DO MOUSE <---
+camera_termica_label.bind("<Button-1>", ao_clicar_termica)
+
+# ---> NOVO LABEL PARA EXIBIR A TEMPERATURA <---
+label_temperatura = ctk.CTkLabel(Camera_Termica_Div, 
+                                 text="Clique na imagem térmica para medir a temperatura", 
+                                 font=('Arial', 18, 'bold'), 
+                                 text_color="#00FF00")
+label_temperatura.pack(pady=5)
+
 Botao_Camera_Termica = ctk.CTkButton(Camera_Termica_Div, text="Visualizar informações térmicas",
                             font=('Arial', 20), bg_color='gray', hover_color='darkgray',
                             text_color='white', 
                             command=lambda: ligar_camera_termica(Botao_Camera_Termica))
 Botao_Camera_Termica.pack(pady=10)
 
-# Botão atualizado para alternar o salvamento automático
+# Botão para alternar o salvamento automático
 Botao_Salvar = ctk.CTkButton(Camera_Termica_Div, text="Iniciar Salvamento Automático (2s)",
                             font=('Arial', 20), fg_color='#228B22', hover_color='#006400',
                             text_color='white', command=toggle_auto_salvar)
