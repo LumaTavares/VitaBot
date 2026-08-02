@@ -4,7 +4,48 @@ from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import drawing_styles
 import cv2
+import threading
+import time
 import mediapipe as mp
+
+class Webcam:
+  def __init__(self, id_camera, largura , altura):
+    self.id_camera = id_camera
+    self.largura = largura
+    self.altura = altura
+    self.cap = cv2.VideoCapture(self.id_camera)
+    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.largura)
+    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.altura)
+
+    self.frame = None
+    self.ok = False
+    self.running = False
+    self.lock = threading.Lock()
+
+  def start(self):
+    while self.running:
+      ok, frame = self.cap.read()
+      with self.lock:
+        self.ok = ok
+        if ok:
+          self.frame = frame
+        else:
+          self.frame = self.frame
+      if not ok:
+        time.sleep(0.05)
+  
+  def read(self):
+    with self.lock:
+      if self.frame == None:
+        return False, None
+      return self.ok, self.frame.copy()
+  
+  def stop(self):
+    self.running = False
+    if hasattr(self, "thread"):
+      self.thread.join(timeout=1)
+    self.cap.release()
+
 
 def bounding_box(landmark ,  width , height):
   #print(landmark, "\n")

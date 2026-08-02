@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import threading
 import cv2
 from PIL import Image
 import webcam
