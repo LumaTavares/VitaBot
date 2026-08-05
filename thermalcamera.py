@@ -2,10 +2,49 @@ import serial
 import numpy as np
 import cv2
 
-def conectar_serial():
-    porta = "COM3"  # porta serial pode ajustar se precisar
-    baud_rate = 115200
+class ThermalCam:
+    def __init__(self, porta="COM3", baud_rate=115200):
+        self.porta = porta
+        self.baud_rate = baud_rate
+        self.ser = conectar_serial(self.porta, self.baud_rate)
 
+        self.frame = None
+        self.matriz = None
+        self.ok = False
+        self.running = False
+        self.lock = threading.Lock()
+    
+    def start(self):
+        if self.ser is None:
+            print(f"[Aviso] Não foi possível abrir a porta serial {self.porta}")
+            return self
+        self.running = True
+        self.thread = threading.Thread(target=self._update, daemon=True)
+        self.thread.start()
+        return self
+
+    def _update(self):
+        while self.running:
+            frame, matriz = ler_frame(self.ser)
+            with self.lock:
+                self.ok = True
+                self.frame = frame
+                self.matriz = matriz
+    
+    def read(self):
+        with self.lock:
+            if self.frame is None:
+                return False, None, None
+            return self.ok, self.frame.copy(), self.matriz.copy()
+
+    def stop(self):
+        self.running = False
+        if hasattr(self, "thread"):
+            self.thread.join(timeout=1)
+        self.ser.close()
+      
+
+def conectar_serial(porta, baud_rate):
     try:
         ser = serial.Serial(porta, baud_rate, timeout=1) # canal de comunicação serial
         print("Comunicação estabelecida com a porta", porta)

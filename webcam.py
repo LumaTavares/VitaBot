@@ -23,17 +23,23 @@ class Webcam:
     self.lock = threading.Lock()
 
   def start(self):
+    if not self.cap.isOpened():
+      print(f"[Aviso] Não foi possível abrir a câmera {self.cam_id}")
+      return self
+    self.running = True
+    self.thread = threading.Thread(target=self._update, daemon=True)
+    self.thread.start()
+    return self
+  
+  def _update(self):
     while self.running:
       ok, frame = self.cap.read()
       with self.lock:
         self.ok = ok
-        if ok:
-          self.frame = frame
-        else:
-          self.frame = self.frame
+        self.frame = frame if ok else self.frame
       if not ok:
         time.sleep(0.05)
-  
+
   def read(self):
     with self.lock:
       if self.frame == None:
