@@ -2,6 +2,8 @@ import customtkinter as ctk
 import threading
 import cv2
 from PIL import Image
+from webcam import Webcam
+from thermalcamera import ThermalCam
 import webcam
 import thermalcamera
 import os
@@ -10,6 +12,10 @@ from datetime import datetime
 # Variáveis globais da câmera normal
 camera = None
 url = "172.19.176.32:81/stream"
+
+# teste de integração codigo paralelo
+camera_rgb = Webcam(id_camera=url, largura=640, altura=480)
+camera_termica = ThermalCam(porta="COM3", baud_rate=115200)
 
 # Variáveis globais da câmera térmica
 ser_termica = None
