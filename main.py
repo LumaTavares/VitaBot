@@ -73,7 +73,14 @@ def atualizar_cameras():
 
 threading.Thread(target=atualizar_cameras, daemon=True).start()
 
+# Variáveis globais da câmera térmica
+ser_termica = None
+rodando_termica = False
+ultimo_frame_termico = None
+ultima_matriz_termica = None  # Variável para armazenar as temperaturas brutas (floats)
 
+# Variável de controle do salvamento automático
+auto_salvando = False
 
 # start camera parlelo
 def ligar_camera_rgb(button):
@@ -100,7 +107,130 @@ def desligar_camera_term(button):
         camera_term.stop()
         button.configure(text="Visualizar informações térmicas", command=lambda: ligar_camera_term(button))
 
+# ================= CÂMERA NORMAL =================
+def ligar_camera(button):
+    global camera 
+    if camera is None:
+        button.configure(text="Desligar Câmera", command=lambda: desligar_camera(button))
+        camera = cv2.VideoCapture(url)
+    atualizar_camera()
 
+def desligar_camera(button):
+    global camera
+    if camera is not None:
+        camera.release()
+        camera = None
+    camera_label.configure(image=None)
+    camera_label.image = None
+    button.configure(text="Ligar Câmera", command=lambda: ligar_camera(button))
+
+def atualizar_camera():
+    if camera is not None:
+        ret, frame = camera.read()
+        if ret:
+            frame = webcam.process_frame(frame)
+            img = Image.fromarray(frame)
+            img = img.resize((600, 500))
+            ctk_img = ctk.CTkImage(light_image=img, size=(600, 500))
+            camera_label.configure(image=ctk_img)
+            camera_label.image = ctk_img
+
+        camera_label.after(10, atualizar_camera)    
+
+# ================= CÂMERA TÉRMICA =================
+def ligar_camera_termica(button):
+    global ser_termica, rodando_termica
+    if not rodando_termica:
+        ser_termica = thermalcamera.conectar_serial()
+        if ser_termica is not None:
+            rodando_termica = True
+            button.configure(text="Desligar Câmera Térmica", command=lambda: desligar_camera_termica(button))
+            atualizar_camera_termica()
+
+def desligar_camera_termica(button):
+    global ser_termica, rodando_termica, ultima_matriz_termica
+    rodando_termica = False
+    if ser_termica is not None:
+        ser_termica.close()
+        ser_termica = None
+    
+    ultima_matriz_termica = None
+    camera_termica_label.configure(image=None)
+    camera_termica_label.image = None
+    label_temperatura.configure(text="Clique na imagem térmica para medir a temperatura")
+    button.configure(text="Visualizar informações térmicas", command=lambda: ligar_camera_termica(button))
+
+def atualizar_camera_termica():
+    global ser_termica, rodando_termica, ultimo_frame_termico, ultima_matriz_termica
+    if rodando_termica and ser_termica is not None:
+        resultado = thermalcamera.ler_frame(ser_termica)
+        
+        if resultado is not None:
+            # Desempacota a imagem RGB e a matriz de floats
+            frame_termico, matriz_termica = resultado
+            
+            ultimo_frame_termico = frame_termico
+            ultima_matriz_termica = matriz_termica
+            
+            img = Image.fromarray(frame_termico)
+            ctk_img = ctk.CTkImage(light_image=img, size=(600, 500))
+            camera_termica_label.configure(image=ctk_img)
+            camera_termica_label.image = ctk_img
+            
+        camera_termica_label.after(10, atualizar_camera_termica)
+
+def ao_clicar_termica(event):
+    global ultima_matriz_termica
+    if ultima_matriz_termica is not None and rodando_termica:
+        # Mapeia as coordenadas da tela (600x500) para a resolução real do sensor (32x24)
+        coluna = int((event.x / 600.0) * 32)
+        linha = int((event.y / 500.0) * 24)
+        
+        # Garante que o índice fique dentro dos limites do array Numpy
+        coluna = max(0, min(coluna, 31))
+        linha = max(0, min(linha, 23))
+        
+        # Pega a temperatura exata do ponto clicado
+        temp = ultima_matriz_termica[linha, coluna]
+        
+        # Atualiza a interface gráfica
+        label_temperatura.configure(text=f"Temperatura no ponto: {temp:.1f} °C")
+
+# ================= SALVAMENTO AUTOMÁTICO =================
+def toggle_auto_salvar():
+    global auto_salvando
+    
+    # Inverte o estado atual
+    auto_salvando = not auto_salvando
+    
+    if auto_salvando:
+        Botao_Salvar.configure(text="Parar Salvamento Automático", fg_color='#8B0000', hover_color='#640000')
+        print("Salvamento automático INICIADO.")
+        loop_salvamento() # Inicia o ciclo de salvamento
+    else:
+        Botao_Salvar.configure(text="Iniciar Salvamento Automático (2s)", fg_color='#228B22', hover_color='#006400')
+        print("Salvamento automático PARADO.")
+
+def loop_salvamento():
+    global auto_salvando, ultimo_frame_termico
+    
+    # Só executa se o modo de auto-salvamento ainda estiver ativado
+    if auto_salvando:
+        # Só salva se a câmera térmica estiver ligada e gerando frames
+        if ultimo_frame_termico is not None and rodando_termica:
+            pasta_destino = "capturas_termicas"
+            os.makedirs(pasta_destino, exist_ok=True)
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            nome_arquivo = f"termica_{timestamp}.png"
+            caminho_completo = os.path.join(pasta_destino, nome_arquivo)
+            
+            frame_bgr = cv2.cvtColor(ultimo_frame_termico, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(caminho_completo, frame_bgr)
+            print(f"[{timestamp}] Frame salvo automaticamente!")
+            
+        # Agenda a próxima execução dessa mesma função para daqui a 2000 milissegundos (2 segundos)
+        root.after(2000, loop_salvamento)
 
 # ================= CONFIGURAÇÃO DA INTERFACE =================
 root = ctk.CTk()
