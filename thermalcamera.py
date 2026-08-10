@@ -1,9 +1,10 @@
 import serial
 import numpy as np
+import threading
 import cv2
 
 class ThermalCam:
-    def __init__(self, porta="COM3", baud_rate=115200):
+    def __init__(self, porta, baud_rate):
         self.porta = porta
         self.baud_rate = baud_rate
         self.ser = conectar_serial(self.porta, self.baud_rate)
@@ -41,7 +42,7 @@ class ThermalCam:
         self.running = False
         if hasattr(self, "thread"):
             self.thread.join(timeout=1)
-        self.ser.close()
+        
       
 
 def conectar_serial(porta, baud_rate):

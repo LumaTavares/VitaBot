@@ -24,7 +24,7 @@ class Webcam:
 
   def start(self):
     if not self.cap.isOpened():
-      print(f"[Aviso] Não foi possível abrir a câmera {self.cam_id}")
+      print(f"[Aviso] Não foi possível abrir a câmera {self.id_camera}")
       return self
     self.running = True
     self.thread = threading.Thread(target=self._update, daemon=True)
@@ -42,7 +42,7 @@ class Webcam:
 
   def read(self):
     with self.lock:
-      if self.frame == None:
+      if self.frame is None:
         return False, None
       return self.ok, self.frame.copy()
   
@@ -50,7 +50,7 @@ class Webcam:
     self.running = False
     if hasattr(self, "thread"):
       self.thread.join(timeout=1)
-    self.cap.release()
+    
 
 
 def bounding_box(landmark ,  width , height):
