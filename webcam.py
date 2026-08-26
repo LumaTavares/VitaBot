@@ -36,6 +36,7 @@ class Webcam:
       ok, frame = self.cap.read()
       with self.lock:
         self.ok = ok
+        frame = cv2.rotate(frame, cv2.ROTATE_180)
         self.frame = frame if ok else self.frame
       if not ok:
         time.sleep(0.05)
@@ -100,14 +101,16 @@ options = vision.PoseLandmarkerOptions(
 detector = vision.PoseLandmarker.create_from_options(options)
 
 def process_frame(frame):
+    h , w , _ = frame.shape
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame[:, :, ::-1])
-
     detection_result = detector.detect(image)
 
     poseLandmarkList = detection_result.pose_landmarks
     if poseLandmarkList:
       for idx , landmark in enumerate(poseLandmarkList):
         annotated_image = draw_landmarks_on_image(image.numpy_view(), landmark)
+        bounding_boxes = bounding_box(landmark , w , h)
+        #cv2.rectangle(annotated_image, bounding_boxes[:2], bounding_boxes[2:], (0, 255, 0), 2)
       return cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR)
-    return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    return frame

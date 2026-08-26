@@ -2,6 +2,9 @@ import serial
 import numpy as np
 import threading
 import cv2
+from ultralytics import YOLO
+
+model = YOLO("best.pt")
 
 class ThermalCam:
     def __init__(self, porta, baud_rate):
@@ -98,3 +101,19 @@ def ler_frame(ser):
 
     # Retorna a imagem RGB para exibição E a matriz original com as temperaturas reais
     return thermal_rgb, frame
+
+def bounding_box(frame, results):
+    lista =[]
+    for result in results:
+        boxes = result.boxes.xyxy  # Coordenadas das caixas delimitadoras
+        for box in boxes:
+            x1, y1, x2, y2 = map(int, box)
+            lista.append((x1, y1, x2, y2))
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Desenha a caixa no frame
+    return frame, lista
+
+def processar_frame(frame):
+    results = model(frame)
+    
+    frame_processado, lista = bounding_box(frame, results)
+    return frame_processado

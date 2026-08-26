@@ -12,7 +12,7 @@ from datetime import datetime
 
 # Variáveis globais da câmera normal
 camera = None
-url = "http://192.168.1.114:81/stream"
+url = "http://172.19.176.33:81/stream"
 
 # teste de integração codigo paralelo
 camera_rgb = Webcam(id_camera=url, largura=640, altura=480)
@@ -64,6 +64,7 @@ def atualizar_cameras():
                 ultimo_frame_termico = frame_termico
                 ultima_matriz_termica = matriz_termica
                 
+                img_termico = thermalcamera.processar_frame(frame_termico)
                 img_termico = Image.fromarray(frame_termico)
                 ctk_img_termico = ctk.CTkImage(light_image=img_termico, size=(600, 500))
                 camera_termica_label.configure(image=ctk_img_termico)
